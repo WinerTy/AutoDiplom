@@ -1,0 +1,19 @@
+.iuw-root {
+    background-color: white !important;
+    border: 1px solid #aaa !important;
+    border-radius: 4px !important;
+    cursor: text;
+    padding-bottom: 5px;
+    padding-right: 5px;
+    position: relative;
+    margin-top: 10px;
+    display: inherit;
+    max-width: max-content;
+    min-width: 500px !important;
+}
+
+.iuw-root span {
+    display: flex;
+    align-items: center;
+    font-size: medium;
+}
