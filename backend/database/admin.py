@@ -11,6 +11,7 @@ from .models import (
     AutoMark,
     OrderItem,
     Order,
+    Types,
 )
 
 
@@ -101,8 +102,18 @@ class AutoPartAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     inlines = [AutoPartCharacteristicInline, AutoPartImageInline]
+    formfield_overrides = {
+        models.ImageField: {"widget": ImageUploaderWidget},
+    }
 
     def get_price(self, obj):
         return f"{obj.price} ₽"
 
     get_price.short_description = "Цена"
+
+
+@admin.register(Types)
+class TypesAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    list_per_page = 100
+    search_fields = ("name",)

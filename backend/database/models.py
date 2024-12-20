@@ -1,8 +1,11 @@
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
-from .utils.manager.user_manager import CustomUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
+
+from database.utils.manager.user_manager import CustomUserManager
+from database.exceptions import OutOfCount
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -90,6 +93,9 @@ class AutoPart(models.Model):
     description = models.TextField(verbose_name="Описание")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
     count = models.PositiveIntegerField(default=0, verbose_name="Количество")
+    image = models.ImageField(
+        upload_to="images/", verbose_name="Изображение", blank=True, null=True
+    )
 
     class Meta:
         verbose_name = "Автозапчасть"
@@ -98,8 +104,15 @@ class AutoPart(models.Model):
     def __str__(self):
         return self.name
 
-    def minus_count(self, count: int = 1):
+    def decrease_count(self, count: int = 1):
+        if self.count <= count:
+            raise OutOfCount("Недостаточно товара на складе", self.name, self.count)
         self.count -= count
+        self.save()
+
+    def check_count(self, count: int = 1):
+        if self.count < count:
+            raise OutOfCount("Недостаточно товара на складе", self.name, self.count)
 
 
 class Atribute(models.Model):
@@ -148,7 +161,9 @@ class AutoPartImage(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey("Order", on_delete=models.CASCADE, verbose_name="Заказ")
+    order = models.ForeignKey(
+        "Order", on_delete=models.CASCADE, verbose_name="Заказ", related_name="items"
+    )
     auto_part = models.ForeignKey(
         AutoPart, on_delete=models.CASCADE, verbose_name="Автозапчасть"
     )
@@ -168,7 +183,10 @@ class OrderItem(models.Model):
         if self.count > self.auto_part.count:
             raise ValidationError("Недостаточно товара в наличии")
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        if not self.pk:
+            self.auto_part.decrease_count(self.count)
         self.order.total_price += self.get_total_price()
         self.order.save()
         super().save(*args, **kwargs)
@@ -217,8 +235,8 @@ class Order(models.Model):
         verbose_name = "Заказ"
         verbose_name_plural = "Заказы"
 
-    def save(self, *args, **kwargs):
-        if self.delivery_type.name.lower() == "cамовывоз":
-            self.delivery_address = "Пунк выдачи"
+    # def save(self, *args, **kwargs):
+    #     if self.delivery_type.name.lower() == "cамовывоз":
+    #         self.delivery_address = "Пунк выдачи"
 
-        super().save(*args, **kwargs)
+    #     super().save(*args, **kwargs)

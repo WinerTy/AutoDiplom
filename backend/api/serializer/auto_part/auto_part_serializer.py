@@ -12,4 +12,5 @@ class AutoPartSerializer(serializers.ModelSerializer):
             "description",
             "count",
             "price",
+            "image",
         )
